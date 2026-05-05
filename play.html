@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>KoolRetroHub - Playing</title>
+    <link rel="icon" href="favicon.ico">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body, html {
+            height: 100%;
+            background: #1a1a2e;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* ---- Error page ---- */
+        #error-page {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #aaa;
+            text-align: center;
+            padding: 20px;
+        }
+        #error-page.visible { display: flex; }
+        #error-page h1 { font-size: 1.8em; margin-bottom: 12px; }
+        #error-page p  { font-size: 1em; color: #777; margin-bottom: 24px; }
+        #error-page a  {
+            display: inline-block;
+            padding: 10px 28px;
+            background: #e94560;
+            color: #fff;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        #error-page a:hover { background: #c73650; }
+
+        /* ---- Loading overlay ---- */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0f0f13;
+            color: #e0e0e0;
+            transition: opacity 0.5s ease;
+        }
+        #loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #333;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-text { font-size: 1em; color: #888; }
+
+        /* ---- Control bar ---- */
+        #control-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            opacity: 0;
+        }
+        #control-bar.visible { opacity: 1; }
+
+        #control-bar button {
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: #ccc;
+            padding: 7px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.78em;
+            font-family: inherit;
+            transition: background 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        #control-bar button:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        #control-bar button svg { width: 16px; height: 16px; flex-shrink: 0; }
+        #control-bar .back-btn {
+            background: rgba(233,69,96,0.2);
+            color: #e94560;
+        }
+        #control-bar .back-btn:hover { background: rgba(233,69,96,0.35); }
+        #control-bar .save-btn { color: #4fc3f7; }
+        #control-bar .save-btn:hover { background: rgba(79,195,247,0.15); color: #81d4fa; }
+        #control-bar .load-btn { color: #ffb74d; }
+        #control-bar .load-btn:hover { background: rgba(255,183,77,0.15); color: #ffcc80; }
+        #control-bar .keyboard-btn { color: #aed581; }
+        #control-bar .keyboard-btn:hover { background: rgba(174,213,129,0.15); color: #c5e1a5; }
+        #control-bar .restart-btn { color: #ef5350; }
+        #control-bar .restart-btn:hover { background: rgba(239,83,80,0.15); color: #e57373; }
+        #control-bar .ff-btn { color: #888; }
+        #control-bar .ff-btn:hover { background: rgba(255,255,255,0.08); color: #aaa; }
+        #control-bar .ff-btn.active { color: #66bb6a; }
+        #control-bar .ff-btn.active:hover { background: rgba(102,187,106,0.15); color: #81c784; }
+        #control-bar .spacer { flex: 1; }
+        #load-picker { display: none; }
+
+
+
+        /* ---- Toast notification ---- */
+        #toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 10001;
+            background: rgba(10,10,20,0.92);
+            color: #e0e0e0;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            font-family: inherit;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s, transform 0.35s;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(6px);
+            max-width: 88vw;
+            text-align: left;
+            line-height: 1.5;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast .toast-title {
+            font-weight: 600;
+            color: #4fc3f7;
+            margin-bottom: 2px;
+        }
+        #toast .toast-path {
+            color: #888;
+            font-size: 0.82em;
+            word-break: break-all;
+        }
+
+        /* ---- Emulator container ---- */
+        #emulator-ui {
+            width: 100%;
+            height: 100%;
+        }
+        #emulator-container {
+            width: 100%;
+            height: 100%;
+        }
+        #emulator-container > div { width: 100%; height: 100%; }
+
+        /* ---- Override emulator black background ---- */
+        .ejs_parent { background: #1a1a2e !important; }
+
+        /* ---- Hide emulator built-in bar & gamepad toggle (we use our own) ---- */
+        .ejs_menu_bar { display: none !important; }
+        .ejs_virtualGamepad_open { display: none !important; }
+        .b_speed_fast, .b_speed_slow { display: none !important; }
+
+        /* ---- Fullscreen auto-hide ---- */
+        #control-bar.hide-automatically {
+            animation: fadeOut 2.5s forwards;
+        }
+        @keyframes fadeOut {
+            0%   { opacity: 1; }
+            70%  { opacity: 1; }
+            100% { opacity: 0; pointer-events: none; }
+        }
+
+        @media (min-width: 641px) {
+            #emulator-ui { padding-top: 48px; }
+        }
+
+        @media (max-width: 640px) {
+            #emulator-ui { padding-top: 44px; }
+            #control-bar { padding: 4px 6px; gap: 4px; }
+            #control-bar.hide-automatically { animation: none !important; opacity: 1 !important; }
+            #control-bar button { font-size: 0.7em; padding: 5px 7px; gap: 3px; }
+            #control-bar button svg { width: 14px; height: 14px; }
+            #control-bar .keyboard-btn { display: none; }
+            #toast { font-size: 0.75em; padding: 10px 16px; bottom: 70px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="error-page">
+    <h1>游戏未找到</h1>
+    <p id="error-msg"></p>
+    <a href="index.html">返回游戏库</a>
+</div>
+
+<div id="emulator-ui" style="display:none">
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text"></div>
+    </div>
+    <div id="toast"></div>
+    <div id="control-bar" class="visible">
+        <button class="back-btn" onclick="goBack()" title="返回游戏库">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+            <span class="btn-label">返回</span>
+        </button>
+        <button onclick="toggleFullscreen()" title="全屏">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <span class="btn-label">全屏</span>
+        </button>
+        <button class="save-btn" onclick="saveState()" title="保存进度">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span class="btn-label">存档</span>
+        </button>
+        <button class="load-btn" onclick="loadSaveFile()" title="读取存档">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 11 12 17"/><polyline points="9 14 12 17 15 14"/></svg>
+            <span class="btn-label">读档</span>
+        </button>
+        <button class="restart-btn" onclick="restartGame()" title="重启游戏">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span class="btn-label">重启</span>
+        </button>
+        <button class="ff-btn" onclick="toggleFastForward()" title="加速">
+            <svg viewBox="0 0 512 512" fill="currentColor"><path d="M512 256L272 448V272L32 448V64l240 176V64L512 256z"/></svg>
+            <span class="btn-label">加速</span>
+        </button>
+        <input type="file" id="load-picker" accept=".state,.*">
+        <span class="spacer"></span>
+        <button class="keyboard-btn" onclick="openKeyboardSettings()" title="按键设置">
+            <svg viewBox="0 0 640 512" fill="currentColor"><path d="M480 96H160C71.6 96 0 167.6 0 256s71.6 160 160 160c44.8 0 85.2-18.4 114.2-48h91.5c29 29.6 69.5 48 114.2 48 88.4 0 160-71.6 160-160S568.4 96 480 96zM256 276c0 6.6-5.4 12-12 12h-52v52c0 6.6-5.4 12-12 12h-40c-6.6 0-12-5.4-12-12v-52H76c-6.6 0-12-5.4-12-12v-40c0-6.6 5.4-12 12-12h52v-52c0-6.6 5.4-12 12-12h40c6.6 0 12 5.4 12 12v52h52c6.6 0 12 5.4 12 12v40zm184 68c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48zm80-80c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48z"/></svg>
+            <span class="btn-label">按键设置</span>
+        </button>
+    </div>
+    <div id="emulator-container">
+        <div id="game"></div>
+    </div>
+</div>
+
+<script>
+(async function() {
+    const params = new URLSearchParams(location.search);
+    const gameId = params.get('game');
+    let game = null;
+
+    if (gameId) {
+        try {
+            const resp = await fetch('config/games.json');
+            const games = await resp.json();
+            game = games.find(g => g.id === gameId);
+        } catch(e) {}
+    }
+
+    if (!game) {
+        document.getElementById('error-msg').textContent = gameId
+            ? '未找到 ID 为 "' + gameId + '" 的游戏'
+            : '未指定游戏 ID';
+        document.getElementById('error-page').classList.add('visible');
+        return;
+    }
+
+    // Show emulator UI
+    document.getElementById('emulator-ui').style.display = '';
+    document.getElementById('loading-text').textContent = '正在加载 ' + game.title + ' ...';
+
+    // ---- EmulatorJS configuration ----
+    window.EJS_player        = "#game";
+    window.EJS_gameName      = game.title;
+    window.EJS_gameUrl       = game.file;
+    window.EJS_core          = game.core;
+    window.EJS_pathtodata    = "https://cdn.emulatorjs.org/stable/data/";
+    window.EJS_startOnLoaded = true;
+    window.EJS_disableDatabases = true;
+
+    window.EJS_Buttons = {
+        playPause:         false,
+        restart:           false,
+        saveState:         false,
+        loadState:         false,
+        saveSavFiles:      false,
+        loadSavFiles:      false,
+        settings:          false,
+        mute:              false,
+        fullscreen:        false,
+        contextMenuButton: false,
+        gamepad:           true,
+        cheat:             false,
+        cacheManager:      false,
+        netplay:           false,
+        volume:            false,
+        screenshot:        false,
+        screenRecord:      false,
+        quickSave:         false,
+        quickLoad:         false,
+        rightClick:        false
+    };
+
+    const gameIdStr = game.id;
+
+    async function downloadState(blob, fileName, showSuccess) {
+        // Prefer File System Access API (Chrome/Edge) for accurate save/cancel feedback
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    types: [{ description: '模拟器存档', accept: { 'application/octet-stream': ['.state'] } }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                if (showSuccess) window.showToast('✅ 保存成功', fileName + '\n已保存到下载文件夹', 5000);
+            } catch(e) {
+                // User cancelled or error — don't show success
+                if (e.name !== 'AbortError') {
+                    window.showToast('❌ 保存失败', e.message, 4000);
+                }
+            }
+            return;
+        }
+        // Fallback: traditional download, delay toast to avoid premature success
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        if (showSuccess) {
+            setTimeout(function() {
+                window.showToast('✅ 保存成功', fileName + '\n已保存到下载文件夹', 5000);
+            }, 500);
+        }
+    }
+
+    window.EJS_onSaveState = function(data) {
+        const blob = new Blob([data.state]);
+        downloadState(blob, gameIdStr + '.state', true);
+    };
+
+    window.EJS_ready = function() {
+        document.getElementById("loading-overlay").classList.add("hidden");
+    };
+
+    window.EJS_onGameStart = function() {
+        window.showToast('🎮 ' + EJS_gameName, '游戏加载完成', 2500);
+    };
+
+    // ---- Toast helper ----
+    window.showToast = function(title, detail, duration) {
+        const el = document.getElementById("toast");
+        el.innerHTML = '<div class="toast-title">' + title + '</div>' +
+                       (detail ? '<div class="toast-path">' + detail + '</div>' : '');
+        el.classList.add("show");
+        clearTimeout(el._timer);
+        el._timer = setTimeout(function() { el.classList.remove("show"); }, duration || 3000);
+    };
+
+    // ---- Save state ----
+    window.saveState = function() {
+        const emu = window.EJS_emulator;
+        if (!emu || !emu.gameManager) {
+            window.showToast('⚠️ 模拟器尚未就绪', null, 2000);
+            return;
+        }
+        try {
+            const state = emu.gameManager.getState();
+            if (!state || state.byteLength === 0) {
+                window.showToast('存档数据为空', null, 2500);
+                return;
+            }
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const fileName = gameIdStr + '_' + ts + '.state';
+            const blob = new Blob([state]);
+            downloadState(blob, fileName, true);
+        } catch(e) {
+            window.showToast('❌ 保存失败', e.message, 4000);
+        }
+    };
+
+    // ---- Load save ----
+    window.loadSaveFile = function() {
+        document.getElementById('load-picker').click();
+    };
+
+    document.getElementById('load-picker').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            if (window.EJS_emulator && window.EJS_emulator.gameManager) {
+                window.EJS_emulator.gameManager.loadState(data);
+                window.showToast('✅ 存档已载入', file.name, 4000);
+            } else {
+                window.showToast('⚠️ 模拟器尚未就绪', null, 2000);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        e.target.value = '';
+    });
+
+    // ---- Fullscreen ----
+    window.toggleFullscreen = function() {
+        const el = document.documentElement;
+        if (!document.fullscreenElement) {
+            el.requestFullscreen().catch(function() {});
+        } else {
+            document.exitFullscreen().catch(function() {});
+        }
+    };
+
+
+
+    window.goBack = function() {
+        location.href = 'index.html';
+    };
+
+    window.restartGame = function() {
+        location.reload();
+    };
+
+    window._ffActive = false;
+
+    window.toggleFastForward = function() {
+        const emu = window.EJS_emulator;
+        if (!emu || !emu.gameManager) {
+            window.showToast('⚠️ 模拟器尚未就绪', null, 2000);
+            return;
+        }
+        window._ffActive = !window._ffActive;
+        emu.gameManager.toggleFastForward(window._ffActive ? 1 : 0);
+        document.querySelector('.ff-btn').classList.toggle('active', window._ffActive);
+        window.showToast(window._ffActive ? '⏩ 加速已开启' : '⏩ 加速已关闭', null, 1500);
+    };
+
+    window.openKeyboardSettings = function() {
+        const emu = window.EJS_emulator;
+        if (emu && emu.controlMenu) {
+            emu.controlMenu.style.display = '';
+        } else {
+            window.showToast('⚠️ 模拟器尚未就绪', null, 2000);
+        }
+    };
+
+    // ---- Load EmulatorJS ----
+    const loader = document.createElement('script');
+    loader.src = 'EmulatorJS-4.0.12/data/loader.js';
+    document.body.appendChild(loader);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[
+    {
+        "id": "2048-advance",
+        "title": "2048-ADVANCE",
+        "file": "data/roms/2048_jam.gba",
+        "core": "gba",
+        "cover": "data/covers/2048_cover.png",
+        "description": "仅用于演示，来源：https://basil-termini.itch.io/2048-advance"
+    }
+]
