@@ -289,7 +289,7 @@
     window.EJS_gameName      = game.title;
     window.EJS_gameUrl       = game.file;
     window.EJS_core          = game.core;
-    window.EJS_pathtodata    = "https://cdn.emulatorjs.org/stable/data/";
+    window.EJS_pathtodata    = "EmulatorJS-4.0.12/data/";
     window.EJS_startOnLoaded = true;
     window.EJS_disableDatabases = true;
 
@@ -362,7 +362,7 @@
     };
 
     window.EJS_onGameStart = function() {
-        window.showToast('🎮 ' + EJS_gameName, '游戏加载完成', 2500);
+        window.showToast('🎮 ' + game.title, '游戏加载完成', 2500);
     };
 
     // ---- Toast helper ----
