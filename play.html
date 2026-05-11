@@ -329,7 +329,7 @@
                 const writable = await handle.createWritable();
                 await writable.write(blob);
                 await writable.close();
-                if (showSuccess) window.showToast('✅ 保存成功', fileName + '\n已保存到下载文件夹', 5000);
+                if (showSuccess) window.showToast('✅ 保存成功', fileName + '\n已保存到本地目录', 5000);
             } catch(e) {
                 // User cancelled or error — don't show success
                 if (e.name !== 'AbortError') {
@@ -347,7 +347,7 @@
         URL.revokeObjectURL(url);
         if (showSuccess) {
             setTimeout(function() {
-                window.showToast('✅ 保存成功', fileName + '\n已保存到下载文件夹', 5000);
+                window.showToast('✅ 保存成功', fileName + '\n已保存到本地目录', 5000);
             }, 500);
         }
     }
