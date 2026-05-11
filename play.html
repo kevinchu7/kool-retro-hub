@@ -462,6 +462,16 @@
         }
     };
 
+    // ---- Prevent control bar buttons from stealing keyboard focus ----
+    function preventButtonFocus(e) {
+        const btn = e.target.closest('button');
+        if (btn && !btn.classList.contains('back-btn')) {
+            e.preventDefault(); // prevents focus shift to the button
+        }
+    }
+    document.getElementById('control-bar').addEventListener('mousedown', preventButtonFocus);
+    document.getElementById('control-bar').addEventListener('touchstart', preventButtonFocus, { passive: false });
+
     // ---- Load EmulatorJS ----
     const loader = document.createElement('script');
     loader.src = 'EmulatorJS-4.0.12/data/loader.js';
