@@ -462,7 +462,7 @@
         }
     };
 
-    // ---- Prevent control bar buttons from stealing keyboard focus ----
+    // ---- Prevent control bar buttons from stealing keyboard focus (PC only) ----
     function preventButtonFocus(e) {
         const btn = e.target.closest('button');
         if (btn && !btn.classList.contains('back-btn')) {
@@ -470,7 +470,8 @@
         }
     }
     document.getElementById('control-bar').addEventListener('mousedown', preventButtonFocus);
-    document.getElementById('control-bar').addEventListener('touchstart', preventButtonFocus, { passive: false });
+    // Note: no touchstart handler — preventDefault on touchstart would block
+    // click events on mobile, making buttons unresponsive.
 
     // ---- Load EmulatorJS ----
     const loader = document.createElement('script');
