@@ -388,7 +388,7 @@
                 window.showToast('存档数据为空', null, 2500);
                 return;
             }
-            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const ts = new Date().toLocaleString('sv-SE').replace(/ /g, 'T').replace(/:/g, '-');
             const fileName = gameIdStr + '_' + ts + '.state';
             const blob = new Blob([state]);
             downloadState(blob, fileName, true);
